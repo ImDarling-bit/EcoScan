@@ -1,97 +1,166 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# EcoScan (ECO TAURUS)
 
-# Getting Started
+Application mobile (React Native CLI, Android en priorité) de traçabilité des
+disques durs (HDD/SSD/NVMe) détruits pour le compte de clients, aux couleurs
+du client **ECO TAURUS** (voir `design_handoff_hdd_traceability/`).
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Stack
 
-## Step 1: Start Metro
+- React Native 0.87 (CLI, TypeScript strict)
+- React Navigation : barre d'onglets (`@react-navigation/bottom-tabs`) —
+  Entreprises / Scan (bouton central) / Historique — chaque onglet gérant sa
+  propre pile (`native-stack`)
+- SQLite local (`@op-engineering/op-sqlite`, JSI, compatible New Architecture)
+- `react-native-vision-camera` v5 (Nitro) + `react-native-vision-camera-mlkit`
+  (ML Kit : code-barres/QR + OCR sur photo, scan déclenché manuellement,
+  voir `src/services/scan.ts`)
+- `pdf-lib` + `react-native-pdf` + `react-native-share` pour l'export PDF
+- `react-native-svg` pour les icônes (barre d'onglets, CTA scan)
+- Zustand pour le state management
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## Identité visuelle ECO TAURUS
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+`src/theme.ts` centralise les tokens du handoff design
+(`design_handoff_hdd_traceability/design-tokens.json`) : couleurs (bleu
+`#2E75B6` primaire, vert `#8DC63F`/`#5C9427` accent scan/succès), typographie
+(Manrope 700/800 pour les titres, Public Sans 400/500/600 pour le corps),
+espacements et rayons. Tout style en dur dans un écran doit venir de ce
+fichier plutôt que d'être réinventé.
 
-```sh
-# Using npm
-npm start
+Les polices sont embarquées en statique dans
+`android/app/src/main/assets/fonts/` (Manrope-Bold, Manrope-ExtraBold,
+PublicSans-Regular/Medium/SemiBold) — sur Android, le nom de fichier (sans
+extension) sert directement de `fontFamily`. Le logo est dans
+`src/assets/logo-eco-taurus.png`, affiché dans `AppHeader`
+(`src/components/AppHeader.tsx`) sur les écrans racines de chaque onglet.
 
-# OR using Yarn
-yarn start
+**Non fait volontairement** (hors du périmètre choisi pour cette passe) : les
+nouveaux champs visibles dans la maquette (adresse/SIRET/contact/dernier
+passage sur l'entreprise, statut "Détruit"/"En attente" par disque) —
+purement visuels + navigation par onglets cette fois, pas de nouvelles
+données. La hiérarchie d'information déjà validée sur la fiche disque (S/N
+mis en avant) a été conservée plutôt que remplacée par celle de la maquette.
+
+## Structure
+
+```
+src/
+  components/   composants UI réutilisables (dont icons/ et AppHeader)
+  db/           ouverture SQLite, migrations, requêtes (entreprises, disques)
+  navigation/   tab navigator + stacks + types de routes
+  screens/      les écrans de l'application
+  services/     scan.ts (capture photo HD + analyse code-barres/OCR),
+                ocr.ts (extraction marque/capacité/S/N), pdf.ts (export PDF),
+                permissions.ts (permission caméra Android)
+  store/        stores Zustand (entreprises, disques)
+  theme.ts      tokens de design ECO TAURUS (couleurs, polices, espacements)
+  types/        modèles de données partagés
 ```
 
-## Step 2: Build and run your app
+## Modèle de données
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+Les tables `entreprises` et `disques` portent chacune une colonne
+`synced_at` et un flag `dirty` (voir `src/db/schema.ts`). Elles ne sont pas
+exploitées dans cette itération : la synchronisation avec le desktop est
+prévue pour une itération suivante, ces colonnes préparent uniquement le
+terrain.
+
+## Installation
+
+```bash
+npm install
+```
 
 ### Android
 
-```sh
-# Using npm
+Aucune permission à configurer manuellement en plus de ce qui est déjà dans
+`android/app/src/main/AndroidManifest.xml` (`CAMERA` + features caméra). La
+permission est aussi demandée à l'exécution (Android 6+) via
+`src/services/permissions.ts`, qui s'appuie sur l'API de
+`react-native-vision-camera`.
+
+```bash
 npm run android
-
-# OR using Yarn
-yarn android
 ```
 
-### iOS
+### ML Kit sélectif (taille d'APK)
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+`android/build.gradle` (racine) configure `react-native-vision-camera-mlkit`
+pour ne compiler que le scan de codes-barres/QR et l'OCR latin (voir le bloc
+`ext["react-native-vision-camera-mlkit"]`), sans les langues non latines.
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+### Scan manuel déclenché par bouton (pas de détection en continu)
 
-```sh
-bundle install
-```
+Analyse de 10 étiquettes réelles (Seagate, WD, Hitachi, Dell/OEM, Crucial,
+Kingston, Intel...) : la marque et la capacité ne sont **jamais** encodées
+en code-barres (toujours du texte imprimé), et une étiquette de HDD porte
+souvent 3 à 5 codes-barres différents (modèle, S/N, P/N, firmware, WWN) —
+sans texte pour trancher, impossible de savoir lequel est le vrai S/N.
 
-Then, and every time you update your native dependencies, run:
+Une première version détectait les codes-barres en continu sur un flux basse
+résolution puis déclenchait une capture HD différée : le disque pouvait
+légèrement bouger entre la détection et la capture, ce qui pouvait faire
+lire le mauvais code ou rater l'étiquette. Le scan est donc **entièrement
+manuel** : l'utilisateur cadre le disque, appuie sur le bouton "Scanner",
+et tout part d'une seule photo prise à cet instant précis (`ScanScreen` +
+`src/services/scan.ts`) :
 
-```sh
-bundle exec pod install
-```
+1. `usePhotoHauteResolution` capture **une photo plein capteur** (pas une
+   frame de prévisualisation basse résolution), qualité maximale, flash
+   automatique — le principal correctif pour les confusions de caractères
+   (O/0, B/8, Z/2...) et la qualité limitée du capteur du OnePlus 6T.
+2. `analyserPhotoDisque` lit codes-barres et texte sur **cette même photo**,
+   au même instant — plus de décalage possible entre les deux lectures.
+3. `choisirNumeroSerie` (`src/services/ocr.ts`) fait une **double
+   vérification**, jamais un choix à l'aveugle : elle cherche le texte
+   labellisé "S/N"/"HDD S/N"/"Serial No"/"ISN", puis calcule un score de
+   correspondance (distance de Levenshtein, tolérant O/0, B/8, Z/2, I/L/1,
+   S/5) contre CHAQUE code-barres détecté. Le code-barres retenu doit
+   atteindre au moins **80% de correspondance** avec le texte — sinon
+   (ex : un code-barres de P/N, WWN ou PSID détecté à la place de celui du
+   S/N), `fiable: false` est renvoyé et `ScanScreen` affiche un avertissement
+   ⚠️ demandant de vérifier l'information avant de continuer, plutôt que de
+   deviner un code-barres au hasard.
+4. Résultat affiché pour vérification (S/N, marque, capacité) avant de
+   valider et passer au disque suivant, ou de rescanner.
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+Amélioration possible si ça reste insuffisant : un prétraitement d'image
+(contraste, netteté) avant l'analyse ML Kit, via une librairie de
+manipulation d'image dédiée — pas encore fait, à évaluer si la photo plein
+capteur ne suffit pas.
 
-```sh
-# Using npm
-npm run ios
+## Écrans
 
-# OR using Yarn
-yarn ios
-```
+**Onglet Entreprises** (pile `EntreprisesStack`) :
+1. **Entreprises** (`EntrepriseListScreen`) — recherche + création rapide.
+2. **Fiche entreprise** (`EntrepriseDetailScreen`) — CTA "Scanner un disque"
+   (popup de sélection du type HDD/SSD/NVMe **avant** le scan — le type ne
+   vient jamais du scan), liste des disques par session, lien "Saisir
+   manuellement sans scan".
+3. **Scan** (`ScanScreen`) — caméra plein écran (cadre portrait), bouton
+   "Scanner" qui capture une photo HD et l'analyse (S/N, marque, capacité),
+   puis formulaire de confirmation pré-rempli et éditable.
+4. **Saisie manuelle** (`ManualEntryScreen`) — fallback si le scan échoue ;
+   le type est pré-rempli avec celui choisi avant le scan, mais reste
+   corrigeable.
+5. **Export PDF** (`PdfSessionSelectionScreen` + `PdfPreviewScreen`) —
+   sélection des sessions à inclure, option "Annexe détaillée par disque"
+   (une page par disque avec le texte OCR brut complet — P/N, WWN, PSID...
+   jamais parsé individuellement mais conservé pour archive), génération et
+   partage du rapport.
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+**Bouton Scan central de la barre d'onglets** : ouvre
+`ScanChoisirEntrepriseScreen` (choix de l'entreprise, puis popup de type)
+quand on n'a pas encore de fiche entreprise ouverte.
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+**Onglet Historique** (pile `HistoriqueStack`, un seul écran) :
+6. **Historique** (`HistoryScreen`) — filtres par entreprise, type, marque
+   et date, compteur de résultats, "Réinitialiser les filtres".
 
-## Step 3: Modify your app
+## Prochaine itération
 
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+- Synchronisation avec le desktop (colonnes `synced_at` / `dirty` déjà en
+  place).
+- `@op-engineering/op-sqlite` expose des requêtes réactives
+  (`reactiveExecute`) qui pourront simplifier la synchro offline-first le
+  moment venu.

@@ -66,6 +66,9 @@ yarn-error.log
 # testing
 /coverage
 
+# VS Code React Native Tools debug intermediates
+.vscode/.react/
+
 # Yarn
 .yarn/*
 !.yarn/patches

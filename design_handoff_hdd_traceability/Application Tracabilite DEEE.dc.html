@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; background: #EAF0F6; font-family: 'Public Sans', sans-serif; }
+    input, select { font-family: 'Public Sans', sans-serif; }
+  </style>
+</helmet>
+
+<!--
+  ECO TAURUS — Maquette démo app de traçabilité de disques durs détruits.
+  Un seul fichier, données mockées, navigation par état interne (pas de routeur).
+  Repères pour la conversion React Native (Claude Code) :
+    - Bloc "PHONE FRAME"      -> SafeAreaView / écran racine
+    - Bloc "HEADER"           -> composant AppHeader (titre + retour)
+    - Bloc "TAB BAR"          -> composant BottomTabBar
+    - Card entreprise         -> composant <CompanyCard />
+    - Card disque             -> composant <DiskCard />
+    - Bouton scan (accent)    -> composant <ScanButton />
+    - Bloc "FORM"             -> composant <DiskConfirmForm />
+    - design-tokens.json      -> theme object / StyleSheet constants
+-->
+
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 16px;">
+  <!-- PHONE FRAME -->
+  <div style="width:390px;max-width:100%;height:844px;background:#F4F7FA;border-radius:28px;border:1px solid #D8E1EA;box-shadow:0 12px 28px rgba(27,35,30,0.14);overflow:hidden;display:flex;flex-direction:column;position:relative;">
+
+    <!-- HEADER -->
+    <div style="flex:none;height:56px;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid #D8E1EA;background:#FFFFFF;">
+      <sc-if value="{{ showBack }}">
+        <button onClick="{{ goBack }}" aria-label="Retour" style="border:none;background:none;padding:6px;margin-left:-6px;cursor:pointer;display:flex;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1B2430" stroke-width="1.8"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+      </sc-if>
+      <sc-if value="{{ showLogo }}" hint-placeholder-val="{{ true }}">
+        <img src="./assets/logo-eco-taurus.png" alt="ECO TAURUS" style="width:28px;height:28px;flex:none;" />
+      </sc-if>
+      <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:17px;color:#1B2430;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ headerTitle }}</div>
+    </div>
+
+    <!-- SCREEN BODY -->
+    <div style="flex:1;overflow-y:auto;padding:16px;padding-bottom:24px;">
+
+      <!-- SCREEN: COMPANIES LIST -->
+      <sc-if value="{{ isCompanies }}" hint-placeholder-val="{{ true }}">
+        <div style="font-size:13px;color:#5B6672;margin-bottom:14px;">{{ companyCountLabel }}</div>
+        <sc-for list="{{ companies }}" as="c" hint-placeholder-count="5">
+          <button onClick="{{ c.open }}" style="display:block;width:100%;text-align:left;background:#FFFFFF;border:1px solid #D8E1EA;border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+              <div style="font-family:'Manrope',sans-serif;font-weight:700;font-size:15px;color:#1B2430;">{{ c.name }}</div>
+              <div style="flex:none;font-size:12px;font-weight:600;color:#5C9427;background:#EAF5DC;border-radius:999px;padding:3px 9px;">{{ c.diskCountLabel }}</div>
+            </div>
+            <div style="font-size:12px;color:#5B6672;margin-top:4px;">{{ c.city }} · {{ c.siret }}</div>
+            <div style="font-size:12px;color:#5B6672;margin-top:2px;">Dernier passage : {{ c.lastVisit }}</div>
+          </button>
+        </sc-for>
+      </sc-if>
+
+      <!-- SCREEN: COMPANY DETAIL -->
+      <sc-if value="{{ isCompanyDetail }}">
+        <div style="background:#FFFFFF;border:1px solid #D8E1EA;border-radius:12px;padding:14px;margin-bottom:16px;">
+          <div style="font-size:12px;color:#5B6672;">{{ selectedCompany.address }}</div>
+          <div style="font-size:12px;color:#5B6672;margin-top:2px;">SIRET {{ selectedCompany.siret }} · Contact : {{ selectedCompany.contact }}</div>
+        </div>
+        <button onClick="{{ startScanForSelected }}" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:#2E75B6;color:#FFFFFF;border:none;border-radius:10px;padding:13px;font-family:'Manrope',sans-serif;font-weight:700;font-size:15px;margin-bottom:18px;cursor:pointer;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.8"><path d="M3 7l2-3h14l2 3M3 7v12a1 1 0 001 1h16a1 1 0 001-1V7M3 7h18"/><circle cx="12" cy="14" r="3"/></svg>
+          Scanner un disque
+        </button>
+        <div style="font-family:'Manrope',sans-serif;font-weight:700;font-size:14px;color:#1B2430;margin-bottom:10px;">Disques associés ({{ selectedCompanyDiskCount }})</div>
+        <sc-for list="{{ selectedCompanyDisks }}" as="d" hint-placeholder-count="4">
+          <div style="background:#FFFFFF;border:1px solid #D8E1EA;border-radius:12px;padding:12px;margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+              <div>
+                <div style="font-family:'Manrope',sans-serif;font-weight:700;font-size:14px;">{{ d.brand }} — {{ d.type }}</div>
+                <div style="font-size:12px;color:#5B6672;margin-top:2px;">S/N {{ d.sn }} · {{ d.size }}</div>
+              </div>
+              <div style="flex:none;font-size:11px;font-weight:600;color:{{ d.statusColor }};background:{{ d.statusBg }};border-radius:999px;padding:3px 9px;white-space:nowrap;">{{ d.status }}</div>
+            </div>
+            <div style="font-size:11px;color:#7A8694;margin-top:6px;">{{ d.date }}</div>
+          </div>
+        </sc-for>
+      </sc-if>
+
+      <!-- SCREEN: PICK COMPANY BEFORE SCAN -->
+      <sc-if value="{{ isScanPick }}">
+        <div style="font-size:13px;color:#5B6672;margin-bottom:14px;">Choisissez l'entreprise concernée par ce disque.</div>
+        <sc-for list="{{ companies }}" as="c" hint-placeholder-count="5">
+          <button onClick="{{ c.pickForScan }}" style="display:block;width:100%;text-align:left;background:#FFFFFF;border:1px solid #D8E1EA;border-radius:12px;padding:13px;margin-bottom:8px;cursor:pointer;font-family:'Manrope',sans-serif;font-weight:700;font-size:14px;color:#1B2430;">
+            {{ c.name }}
+          </button>
+        </sc-for>
+      </sc-if>
+
+      <!-- SCREEN: SCAN -->
+      <sc-if value="{{ isScan }}">
+        <div style="font-size:13px;color:#5B6672;margin-bottom:18px;">Entreprise : <strong style="color:#1B2430;">{{ selectedCompany.name }}</strong></div>
+        <div style="border:2px dashed #B9C7D4;border-radius:16px;height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#FFFFFF;margin-bottom:20px;">
+          <sc-if value="{{ scanning }}" hint-placeholder-val="{{ false }}">
+            <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#2E75B6" stroke-width="1.5" style="animation:spin 1.1s linear infinite;"><circle cx="12" cy="12" r="9" stroke-dasharray="42" stroke-dashoffset="12"/></svg>
+            <div style="font-size:13px;color:#5B6672;">Lecture de l'étiquette en cours…</div>
+          </sc-if>
+          <sc-if value="{{ notScanning }}" hint-placeholder-val="{{ true }}">
+            <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#7A8694" stroke-width="1.3"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M9 4v16"/></svg>
+            <div style="font-size:13px;color:#5B6672;text-align:center;max-width:220px;">Cadrez l'étiquette du disque dans le repère (simulation)</div>
+          </sc-if>
+        </div>
+        <button onClick="{{ runScan }}" disabled="{{ scanning }}" style="display:block;width:100%;background:#2E75B6;color:#FFFFFF;border:none;border-radius:10px;padding:14px;font-family:'Manrope',sans-serif;font-weight:700;font-size:15px;cursor:pointer;opacity:{{ scanButtonOpacity }};">{{ scanButtonLabel }}</button>
+        <button onClick="{{ skipToManual }}" style="display:block;width:100%;background:none;border:none;color:#5B6672;font-size:13px;padding:12px;margin-top:4px;cursor:pointer;text-decoration:underline;">Saisir manuellement sans scan</button>
+      </sc-if>
+
+      <!-- SCREEN: CONFIRM FORM -->
+      <sc-if value="{{ isForm }}">
+        <div style="font-size:13px;color:#5B6672;margin-bottom:16px;">Vérifiez les informations avant de confirmer la destruction — <strong style="color:#1B2430;">{{ selectedCompany.name }}</strong></div>
+
+        <div style="margin-bottom:14px;">
+          <label style="display:block;font-size:12px;font-weight:600;color:#5B6672;margin-bottom:6px;">Numéro de série (S/N)</label>
+          <input value="{{ formSn }}" onChange="{{ onFormSnChange }}" style="width:100%;box-sizing:border-box;border:1px solid #D8E1EA;border-radius:10px;padding:11px 12px;font-size:14px;color:#1B2430;background:#FFFFFF;" />
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="display:block;font-size:12px;font-weight:600;color:#5B6672;margin-bottom:6px;">Marque</label>
+          <input value="{{ formBrand }}" onChange="{{ onFormBrandChange }}" style="width:100%;box-sizing:border-box;border:1px solid #D8E1EA;border-radius:10px;padding:11px 12px;font-size:14px;color:#1B2430;background:#FFFFFF;" />
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="display:block;font-size:12px;font-weight:600;color:#5B6672;margin-bottom:6px;">Type</label>
+          <div style="display:flex;gap:6px;">
+            <sc-for list="{{ diskTypes }}" as="t" hint-placeholder-count="3">
+              <button onClick="{{ t.select }}" style="flex:1;border-radius:10px;padding:10px 4px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid {{ t.borderColor }};background:{{ t.bg }};color:{{ t.color }};">{{ t.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="margin-bottom:20px;">
+          <label style="display:block;font-size:12px;font-weight:600;color:#5B6672;margin-bottom:6px;">Taille</label>
+          <input value="{{ formSize }}" onChange="{{ onFormSizeChange }}" style="width:100%;box-sizing:border-box;border:1px solid #D8E1EA;border-radius:10px;padding:11px 12px;font-size:14px;color:#1B2430;background:#FFFFFF;" />
+        </div>
+
+        <button onClick="{{ confirmDestruction }}" style="display:block;width:100%;background:#2E75B6;color:#FFFFFF;border:none;border-radius:10px;padding:14px;font-family:'Manrope',sans-serif;font-weight:700;font-size:15px;cursor:pointer;">Confirmer la destruction</button>
+      </sc-if>
+
+      <!-- SCREEN: SUCCESS -->
+      <sc-if value="{{ isSuccess }}">
+        <div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:40px 12px;">
+          <div style="width:64px;height:64px;border-radius:999px;background:#EAF5DC;display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#5C9427" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:18px;color:#1B2430;margin-bottom:6px;">Destruction enregistrée</div>
+          <div style="font-size:13px;color:#5B6672;max-width:260px;line-height:1.5;">Le disque {{ lastConfirmedSn }} a été ajouté à l'historique de traçabilité de {{ selectedCompany.name }}.</div>
+          <button onClick="{{ backToCompanyAfterSuccess }}" style="margin-top:24px;background:#2E75B6;color:#FFFFFF;border:none;border-radius:10px;padding:12px 22px;font-family:'Manrope',sans-serif;font-weight:700;font-size:14px;cursor:pointer;">Retour à l'entreprise</button>
+        </div>
+      </sc-if>
+
+      <!-- SCREEN: HISTORY -->
+      <sc-if value="{{ isHistory }}">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+          <select value="{{ filterCompany }}" onChange="{{ onFilterCompanyChange }}" style="border:1px solid #D8E1EA;border-radius:10px;padding:9px 8px;font-size:13px;background:#FFFFFF;color:#1B2430;">
+            <option value="">Toutes entreprises</option>
+            <sc-for list="{{ companies }}" as="c" hint-placeholder-count="5">
+              <option value="{{ c.name }}">{{ c.name }}</option>
+            </sc-for>
+          </select>
+          <select value="{{ filterType }}" onChange="{{ onFilterTypeChange }}" style="border:1px solid #D8E1EA;border-radius:10px;padding:9px 8px;font-size:13px;background:#FFFFFF;color:#1B2430;">
+            <option value="">Tous types</option>
+            <option value="HDD">HDD</option>
+            <option value="SSD">SSD</option>
+            <option value="NVMe">NVMe</option>
+          </select>
+          <select value="{{ filterBrand }}" onChange="{{ onFilterBrandChange }}" style="border:1px solid #D8E1EA;border-radius:10px;padding:9px 8px;font-size:13px;background:#FFFFFF;color:#1B2430;">
+            <option value="">Toutes marques</option>
+            <sc-for list="{{ brandOptions }}" as="b" hint-placeholder-count="4">
+              <option value="{{ b }}">{{ b }}</option>
+            </sc-for>
+          </select>
+          <input type="date" value="{{ filterDate }}" onChange="{{ onFilterDateChange }}" style="border:1px solid #D8E1EA;border-radius:10px;padding:8px;font-size:13px;background:#FFFFFF;color:#1B2430;" />
+        </div>
+        <sc-if value="{{ hasActiveFilters }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ clearFilters }}" style="background:none;border:none;color:#2E75B6;font-size:12px;padding:0 0 12px;cursor:pointer;text-decoration:underline;">Réinitialiser les filtres</button>
+        </sc-if>
+        <div style="font-size:12px;color:#5B6672;margin-bottom:10px;">{{ historyResultLabel }}</div>
+        <sc-for list="{{ filteredHistory }}" as="h" hint-placeholder-count="4">
+          <div style="background:#FFFFFF;border:1px solid #D8E1EA;border-radius:12px;padding:12px;margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+              <div>
+                <div style="font-family:'Manrope',sans-serif;font-weight:700;font-size:14px;">{{ h.brand }} — {{ h.type }}</div>
+                <div style="font-size:12px;color:#5B6672;margin-top:2px;">S/N {{ h.sn }} · {{ h.size }}</div>
+                <div style="font-size:12px;color:#5B6672;margin-top:2px;">{{ h.companyName }}</div>
+              </div>
+              <div style="flex:none;font-size:11px;font-weight:600;color:#5C9427;background:#EAF5DC;border-radius:999px;padding:3px 9px;">{{ h.date }}</div>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ historyEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="text-align:center;color:#7A8694;font-size:13px;padding:32px 0;">Aucun résultat pour ces filtres.</div>
+        </sc-if>
+      </sc-if>
+
+    </div>
+
+    <!-- TAB BAR -->
+    <div style="flex:none;height:72px;display:flex;align-items:center;justify-content:space-around;border-top:1px solid #D8E1EA;background:#FFFFFF;padding-bottom:8px;">
+      <button onClick="{{ goCompanies }}" style="border:none;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:{{ tabCompaniesColor }};">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{ tabCompaniesColor }}" stroke-width="1.6"><path d="M3 21h18M6 21V7l6-4 6 4v14M10 21v-6h4v6"/></svg>
+        <div style="font-size:11px;font-weight:600;">Entreprises</div>
+      </button>
+      <button onClick="{{ goScanTab }}" style="border:none;background:#5C9427;border-radius:999px;width:52px;height:52px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:-24px;box-shadow:0 6px 14px rgba(92,148,39,0.35);">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.8"><path d="M3 7l2-3h14l2 3M3 7v12a1 1 0 001 1h16a1 1 0 001-1V7M3 7h18"/><circle cx="12" cy="14" r="3"/></svg>
+      </button>
+      <button onClick="{{ goHistory }}" style="border:none;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:{{ tabHistoryColor }};">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{ tabHistoryColor }}" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        <div style="font-size:11px;font-weight:600;">Historique</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  // ---- MOCK DATA -----------------------------------------------------
+  companiesData = [
+    { id: 'c1', name: 'Bordeaux Métropole Numérique', city: 'Bordeaux (33000)', address: '12 rue des Frères Bonie, 33000 Bordeaux', siret: '812 345 678 00012', contact: 'S. Lemoine', lastVisit: '12/09/2026' },
+    { id: 'c2', name: 'CHU de Bordeaux', city: 'Pessac (33600)', address: 'Avenue Magellan, 33600 Pessac', siret: '267 300 019 00045', contact: 'R. Faucher', lastVisit: '05/09/2026' },
+    { id: 'c3', name: 'Cabinet Notarial Lherm & Associés', city: 'Mérignac (33700)', address: '4 avenue de la Marne, 33700 Mérignac', siret: '498 221 003 00021', contact: 'M. Lherm', lastVisit: '28/08/2026' },
+    { id: 'c4', name: 'Groupe Immo Aquitaine', city: 'Talence (33400)', address: '9 cours Gambetta, 33400 Talence', siret: '531 990 442 00018', contact: 'J. Vidal', lastVisit: '02/09/2026' },
+    { id: 'c5', name: 'Lycée Gustave Eiffel', city: 'Bordeaux (33800)', address: '55 rue du Professeur Devaux, 33800 Bordeaux', siret: '199 133 220 00033', contact: 'C. Nguyen', lastVisit: '15/08/2026' }
+  ];
+
+  disksData = {
+    c1: [
+      { id: 'd1', sn: 'WD-4X29K81T', brand: 'Western Digital', type: 'HDD', size: '1 To', status: 'Détruit', date: '12/09/2026' },
+      { id: 'd2', sn: 'ST-9812AAB2', brand: 'Seagate', type: 'HDD', size: '2 To', status: 'Détruit', date: '12/09/2026' },
+      { id: 'd3', sn: 'SM-EVO770K3', brand: 'Samsung', type: 'SSD', size: '512 Go', status: 'En attente', date: '12/09/2026' }
+    ],
+    c2: [
+      { id: 'd4', sn: 'TS-P300X912', brand: 'Toshiba', type: 'HDD', size: '4 To', status: 'Détruit', date: '05/09/2026' },
+      { id: 'd5', sn: 'KG-A400V771', brand: 'Kingston', type: 'SSD', size: '256 Go', status: 'Détruit', date: '05/09/2026' },
+      { id: 'd6', sn: 'SM-NV980P44', brand: 'Samsung', type: 'NVMe', size: '1 To', status: 'Détruit', date: '05/09/2026' },
+      { id: 'd7', sn: 'CR-BX500Q19', brand: 'Crucial', type: 'SSD', size: '480 Go', status: 'En attente', date: '05/09/2026' }
+    ],
+    c3: [
+      { id: 'd8', sn: 'WD-BLUE22K1', brand: 'Western Digital', type: 'HDD', size: '500 Go', status: 'Détruit', date: '28/08/2026' }
+    ],
+    c4: [
+      { id: 'd9', sn: 'ST-BARR441X', brand: 'Seagate', type: 'HDD', size: '1 To', status: 'En attente', date: '02/09/2026' },
+      { id: 'd10', sn: 'CR-MX500712', brand: 'Crucial', type: 'SSD', size: '1 To', status: 'Détruit', date: '02/09/2026' }
+    ],
+    c5: [
+      { id: 'd11', sn: 'TS-L200A883', brand: 'Toshiba', type: 'HDD', size: '2 To', status: 'Détruit', date: '15/08/2026' },
+      { id: 'd12', sn: 'KG-NV200B41', brand: 'Kingston', type: 'NVMe', size: '512 Go', status: 'Détruit', date: '15/08/2026' }
+    ]
+  };
+
+  scanPresets = [
+    { sn: 'WD-7QK281AB', brand: 'Western Digital', type: 'HDD', size: '2 To' },
+    { sn: 'ST-4412RRT9', brand: 'Seagate', type: 'HDD', size: '1 To' },
+    { sn: 'SM-EVO88KX3', brand: 'Samsung', type: 'SSD', size: '1 To' },
+    { sn: 'CR-P3PLUS12', brand: 'Crucial', type: 'NVMe', size: '500 Go' },
+    { sn: 'KG-A400X771', brand: 'Kingston', type: 'SSD', size: '256 Go' }
+  ];
+
+  state = {
+    screen: 'companies',
+    selectedCompanyId: null,
+    scanning: false,
+    formSn: '', formBrand: '', formType: 'HDD', formSize: '',
+    lastConfirmedSn: '',
+    filterCompany: '', filterType: '', filterBrand: '', filterDate: ''
+  };
+
+  statusStyle(status) {
+    return status === 'Détruit'
+      ? { statusColor: '#5C9427', statusBg: '#EAF5DC' }
+      : { statusColor: '#A6621F', statusBg: '#F6E7D2' };
+  }
+
+  goBack = () => {
+    const s = this.state.screen;
+    if (s === 'company') this.setState({ screen: 'companies', selectedCompanyId: null });
+    else if (s === 'scanPick') this.setState({ screen: 'companies' });
+    else if (s === 'scan') this.setState({ screen: this.state.cameFromPick ? 'scanPick' : 'company', scanning: false });
+    else if (s === 'form') this.setState({ screen: 'scan' });
+    else this.setState({ screen: 'companies' });
+  };
+
+  goCompanies = () => this.setState({ screen: 'companies', selectedCompanyId: null });
+  goHistory = () => this.setState({ screen: 'history' });
+  goScanTab = () => {
+    if (this.state.selectedCompanyId && this.state.screen === 'company') this.setState({ screen: 'scan', scanning: false, cameFromPick: false });
+    else this.setState({ screen: 'scanPick' });
+  };
+
+  openCompany = (id) => this.setState({ screen: 'company', selectedCompanyId: id });
+  pickCompanyForScan = (id) => this.setState({ screen: 'scan', selectedCompanyId: id, scanning: false, cameFromPick: true });
+  startScanForSelected = () => this.setState({ screen: 'scan', scanning: false, cameFromPick: false });
+
+  runScan = () => {
+    if (this.state.scanning) return;
+    this.setState({ scanning: true });
+    setTimeout(() => {
+      const preset = this.scanPresets[Math.floor(Math.random() * this.scanPresets.length)];
+      this.setState({
+        scanning: false, screen: 'form',
+        formSn: preset.sn, formBrand: preset.brand, formType: preset.type, formSize: preset.size
+      });
+    }, 1200);
+  };
+
+  skipToManual = () => this.setState({ screen: 'form', formSn: '', formBrand: '', formType: 'HDD', formSize: '' });
+
+  confirmDestruction = () => {
+    const companyId = this.state.selectedCompanyId;
+    const newDisk = {
+      id: 'd' + Date.now(),
+      sn: this.state.formSn || 'S/N-INCONNU',
+      brand: this.state.formBrand || 'Marque inconnue',
+      type: this.state.formType,
+      size: this.state.formSize || '—',
+      status: 'Détruit',
+      date: '18/09/2026'
+    };
+    if (!this.disksData[companyId]) this.disksData[companyId] = [];
+    this.disksData[companyId] = [newDisk, ...this.disksData[companyId]];
+    this.setState({ screen: 'success', lastConfirmedSn: newDisk.sn });
+  };
+
+  backToCompanyAfterSuccess = () => this.setState({ screen: 'company' });
+
+  renderVals() {
+    const st = this.state;
+    const selectedCompany = this.companiesData.find(c => c.id === st.selectedCompanyId) || { name: '', address: '', siret: '', contact: '' };
+
+    const companies = this.companiesData.map(c => ({
+      ...c,
+      diskCountLabel: (this.disksData[c.id] || []).length + ' disque' + ((this.disksData[c.id] || []).length === 1 ? '' : 's'),
+      open: () => this.openCompany(c.id),
+      pickForScan: () => this.pickCompanyForScan(c.id)
+    }));
+
+    const selectedCompanyDisksRaw = this.disksData[st.selectedCompanyId] || [];
+    const selectedCompanyDisks = selectedCompanyDisksRaw.map(d => ({ ...d, ...this.statusStyle(d.status) }));
+
+    const allHistory = [];
+    for (const c of this.companiesData) {
+      for (const d of (this.disksData[c.id] || [])) {
+        if (d.status === 'Détruit') allHistory.push({ ...d, companyId: c.id, companyName: c.name });
+      }
+    }
+    allHistory.sort((a, b) => (a.date < b.date ? 1 : -1));
+
+    const filteredHistory = allHistory.filter(h =>
+      (!st.filterCompany || h.companyName === st.filterCompany) &&
+      (!st.filterType || h.type === st.filterType) &&
+      (!st.filterBrand || h.brand === st.filterBrand) &&
+      (!st.filterDate || h.date === this.isoToFr(st.filterDate))
+    );
+
+    const brandOptions = [...new Set(allHistory.map(h => h.brand))].sort();
+
+    const diskTypes = ['HDD', 'SSD', 'NVMe'].map(t => {
+      const active = st.formType === t;
+      return {
+        label: t,
+        select: () => this.setState({ formType: t }),
+        bg: active ? '#DCE9F5' : '#FFFFFF',
+        color: active ? '#1F5586' : '#5B6672',
+        borderColor: active ? '#1F5586' : '#D8E1EA'
+      };
+    });
+
+    const screen = st.screen;
+    const headerTitles = {
+      companies: 'Entreprises clientes',
+      company: selectedCompany.name || 'Entreprise',
+      scanPick: 'Choisir une entreprise',
+      scan: 'Scanner un disque',
+      form: 'Confirmer les informations',
+      success: 'Destruction confirmée',
+      history: 'Historique'
+    };
+
+    return {
+      isCompanies: screen === 'companies',
+      isCompanyDetail: screen === 'company',
+      isScanPick: screen === 'scanPick',
+      isScan: screen === 'scan',
+      isForm: screen === 'form',
+      isSuccess: screen === 'success',
+      isHistory: screen === 'history',
+      showBack: screen === 'company' || screen === 'scanPick' || screen === 'scan' || screen === 'form',
+      headerTitle: headerTitles[screen] || 'ECO TAURUS',
+      goBack: this.goBack, goCompanies: this.goCompanies, goHistory: this.goHistory, goScanTab: this.goScanTab,
+      companies,
+      companyCountLabel: companies.length + ' entreprises suivies',
+      selectedCompany,
+      selectedCompanyDisks,
+      selectedCompanyDiskCount: selectedCompanyDisks.length,
+      startScanForSelected: this.startScanForSelected,
+      scanning: st.scanning,
+      notScanning: !st.scanning,
+      runScan: this.runScan,
+      skipToManual: this.skipToManual,
+      scanButtonLabel: st.scanning ? 'Scan en cours…' : 'Lancer le scan',
+      scanButtonOpacity: st.scanning ? 0.6 : 1,
+      formSn: st.formSn, formBrand: st.formBrand, formSize: st.formSize,
+      onFormSnChange: (e) => this.setState({ formSn: e.target.value }),
+      onFormBrandChange: (e) => this.setState({ formBrand: e.target.value }),
+      onFormSizeChange: (e) => this.setState({ formSize: e.target.value }),
+      diskTypes,
+      confirmDestruction: this.confirmDestruction,
+      lastConfirmedSn: st.lastConfirmedSn,
+      backToCompanyAfterSuccess: this.backToCompanyAfterSuccess,
+      filterCompany: st.filterCompany, filterType: st.filterType, filterBrand: st.filterBrand, filterDate: st.filterDate,
+      onFilterCompanyChange: (e) => this.setState({ filterCompany: e.target.value }),
+      onFilterTypeChange: (e) => this.setState({ filterType: e.target.value }),
+      onFilterBrandChange: (e) => this.setState({ filterBrand: e.target.value }),
+      onFilterDateChange: (e) => this.setState({ filterDate: e.target.value }),
+      brandOptions,
+      filteredHistory,
+      historyEmpty: filteredHistory.length === 0,
+      historyResultLabel: filteredHistory.length + ' résultat' + (filteredHistory.length === 1 ? '' : 's'),
+      hasActiveFilters: !!(st.filterCompany || st.filterType || st.filterBrand || st.filterDate),
+      clearFilters: () => this.setState({ filterCompany: '', filterType: '', filterBrand: '', filterDate: '' }),
+      showLogo: screen === 'companies' || screen === 'history',
+      tabCompaniesColor: (screen === 'companies' || screen === 'company') ? '#2E75B6' : '#7A8694',
+      tabHistoryColor: screen === 'history' ? '#2E75B6' : '#7A8694'
+    };
+  }
+
+  isoToFr(iso) {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+  }
+}
+</script>
+</body>
+</html>

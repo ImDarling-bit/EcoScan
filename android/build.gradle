@@ -19,3 +19,17 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+// react-native-vision-camera-mlkit : code-barres/QR + OCR latin, tous deux
+// utilisés uniquement sur la photo capturée par le bouton "Scanner" (voir
+// src/services/scan.ts) — jamais en continu sur le flux caméra.
+ext["react-native-vision-camera-mlkit"] = [
+  mlkit: [
+    textRecognition: true,
+    textRecognitionChinese: false,
+    textRecognitionDevanagari: false,
+    textRecognitionJapanese: false,
+    textRecognitionKorean: false,
+    barcodeScanning: true,
+  ]
+]

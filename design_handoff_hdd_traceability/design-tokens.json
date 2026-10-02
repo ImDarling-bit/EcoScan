@@ -1,0 +1,48 @@
+{
+  "_comment": "Design tokens for ECO TAURUS traceability app mockup. Mirrors literal values used inline in the HTML prototype. Use this file to map styles 1:1 into React Native (StyleSheet.create / theme object).",
+  "_comment_color": "Palette matched to the ECO TAURUS logo: globe blue = primary actions/chrome, continent green = scan accent + success/eco status. Both colors present, blue dominant, per the logo.",
+  "color": {
+    "background": "#F4F7FA",
+    "surface": "#FFFFFF",
+    "surfaceMuted": "#EAF0F6",
+    "border": "#D8E1EA",
+    "borderStrong": "#B9C7D4",
+    "textPrimary": "#1B2430",
+    "textSecondary": "#5B6672",
+    "textInverse": "#FFFFFF",
+    "primary": "#2E75B6",
+    "primaryDark": "#1F5586",
+    "primaryLight": "#DCE9F5",
+    "accent": "#8DC63F",
+    "accentDark": "#5C9427",
+    "accentLight": "#EAF5DC",
+    "success": "#5C9427",
+    "successLight": "#EAF5DC",
+    "warning": "#C97A2E",
+    "warningLight": "#F6E7D2",
+    "danger": "#B3432F",
+    "dangerLight": "#F5DED8",
+    "info": "#2E75B6",
+    "infoLight": "#DCE9F5"
+  },
+  "typography": {
+    "fontHeading": "Manrope",
+    "fontBody": "Public Sans",
+    "size": { "xs": 12, "sm": 13, "base": 15, "md": 16, "lg": 19, "xl": 23, "xxl": 28 },
+    "weight": { "regular": 400, "medium": 500, "semibold": 600, "bold": 700 },
+    "lineHeight": { "tight": 1.15, "normal": 1.4, "relaxed": 1.6 }
+  },
+  "spacing": { "xs": 4, "sm": 8, "md": 12, "base": 16, "lg": 24, "xl": 32, "xxl": 40 },
+  "radius": { "sm": 8, "md": 12, "lg": 16, "pill": 999, "input": 10 },
+  "shadow": {
+    "sm": "0 1px 2px rgba(27,35,30,0.06)",
+    "md": "0 4px 12px rgba(27,35,30,0.08)",
+    "lg": "0 12px 28px rgba(27,35,30,0.14)"
+  },
+  "layout": {
+    "phoneWidth": 390,
+    "phoneHeight": 844,
+    "headerHeight": 56,
+    "tabBarHeight": 72
+  }
+}

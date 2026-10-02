@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Android (Emulator)",
+      "cwd": "${workspaceFolder}",
+      "type": "reactnativedirect",
+      "request": "launch",
+      "platform": "android",
+      "target": "emulator"
+    },
+    {
+      "name": "Debug Android (Device USB)",
+      "cwd": "${workspaceFolder}",
+      "type": "reactnativedirect",
+      "request": "launch",
+      "platform": "android",
+      "target": "device",
+      "runArguments": ["--deviceId", "${input:androidDeviceId}"]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "androidDeviceId",
+      "type": "promptString",
+      "description": "ID de l'appareil Android cible (colonne de gauche de `adb devices`, ex: R58N30ABCDE)"
+    }
+  ]
+}
