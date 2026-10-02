@@ -32,6 +32,20 @@ jest.mock('react-native-vision-camera-mlkit', () => ({
   processImageTextRecognition: jest.fn(() => Promise.resolve({ text: '' })),
 }));
 
+jest.mock('react-native-nitro-image', () => ({
+  Images: {
+    loadFromFileAsync: jest.fn(() =>
+      Promise.resolve({
+        width: 1440,
+        height: 1920,
+        resizeAsync: jest.fn(() =>
+          Promise.resolve({ saveToTemporaryFileAsync: jest.fn(() => Promise.resolve('/tmp/photo-redimensionnee.jpg')) }),
+        ),
+      }),
+    ),
+  },
+}));
+
 jest.mock('react-native-blob-util', () => ({
   __esModule: true,
   default: {
