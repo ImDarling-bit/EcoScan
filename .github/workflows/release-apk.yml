@@ -1,0 +1,67 @@
+name: Build & Release APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Numéro de version (ex: 1.0.0)"
+        required: true
+        default: "1.0.0"
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Déterminer la version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="${{ inputs.version }}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Construire l'APK release
+        working-directory: android
+        run: ./gradlew assembleRelease
+
+      - name: Renommer l'APK
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk \
+             "dist/EcoScan-beta-${{ steps.version.outputs.version }}.apk"
+
+      - name: Créer la release GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "beta-${{ steps.version.outputs.version }}" \
+            "dist/EcoScan-beta-${{ steps.version.outputs.version }}.apk" \
+            --title "EcoScan Bêta ${{ steps.version.outputs.version }}" \
+            --notes "Build bêta automatique d'EcoScan (${{ steps.version.outputs.version }})." \
+            --prerelease
