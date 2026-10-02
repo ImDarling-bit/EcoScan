@@ -48,7 +48,9 @@ jobs:
 
       - name: Construire l'APK release
         working-directory: android
-        run: ./gradlew assembleRelease
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease
 
       - name: Renommer l'APK
         run: |
